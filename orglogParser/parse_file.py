@@ -1,3 +1,4 @@
+
 def parse_file(path, search_string=""):
     def _filter(log_entry):
         if not search_string or search_string in log_entry:
