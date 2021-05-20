@@ -18,6 +18,8 @@ def main(ctx, file, log_message):
     ctx.ensure_object(dict)
     ctx.obj['file'] = file
     ctx.obj['log_message'] = log_message
+    click.clear()
+
 
 @main.command()
 @click.pass_context
@@ -37,7 +39,7 @@ def stats(ctx):
     log_message = ctx.obj['log_message']
 
     res = parse_file(file, log_message)
-    
+
     click.echo("")
     click.echo(f"{ label('Searching', log_message)} { label('in', file) }")
 
