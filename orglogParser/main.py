@@ -9,7 +9,7 @@ from .stats_output import stats_output
     type=click.Path(),
     help="Relative file path") # <-- use option not arg, so default can be set
 @click.option(
-    '--log_message', '-lm',
+    '--log_message', '-l',
     prompt=query('Search Terms'),
     help="Str to filter; skip to echo all")
 @click.pass_context
@@ -35,8 +35,10 @@ def stats(ctx):
     """prints report about --file based on searching --log_message"""
     file = ctx.obj['file']
     log_message = ctx.obj['log_message']
-    
+
     res = parse_file(file, log_message)
+    
+    click.echo("")
     click.echo(f"{ label('Searching', log_message)} { label('in', file) }")
 
     stats_output(res)
