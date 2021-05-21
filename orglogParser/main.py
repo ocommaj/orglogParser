@@ -1,6 +1,7 @@
 import click
-from .parse_file import parse_file
+from .log_parser import LogParser
 from .outputs import query, label
+from .search_file import search_file
 from .stats_output import stats_output
 
 @click.group()
@@ -27,7 +28,7 @@ def parse(ctx):
     """prints all lines in --file that contain --log_message"""
     file = ctx.obj['file']
     log_message = ctx.obj['log_message']
-    res = parse_file(file, log_message)
+    res = search_file(file, log_message)
     for r in res:
         click.echo(r)
 
@@ -38,12 +39,22 @@ def stats(ctx):
     file = ctx.obj['file']
     log_message = ctx.obj['log_message']
 
-    res = parse_file(file, log_message)
+    res = search_file(file, log_message)
 
     click.echo("")
     click.echo(f"{ label('Searching', log_message)} { label('in', file) }")
 
     stats_output(res)
+
+@main.command()
+@click.pass_context
+def classifier(ctx):
+    """tester for class instancing log events from strings"""
+    file = ctx.obj['file']
+    log_message = ctx.obj['log_message']
+
+    events = search_file(file, log_message)
+    LogParser(events)
 
 if __name__ == "__main__":
     main(obj={})

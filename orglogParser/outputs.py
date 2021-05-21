@@ -13,16 +13,12 @@ def query(str):
 def err_label(key, value):
     return label(key, value, flag='attention', all_one=True)
 
-
 def label(key, value=None, flag=None, all_one=False):
     l_color, v_color = _set_color(flag, all_one)
+    st_key = _styled_str(key, l_color)
+    st_val = _styled_str(str(value), v_color)
 
-    if flag == 'query':
-        return _styled_str(key, l_color)
-
-    styled_key = _styled_str(f"{key}: ", l_color)
-    styled_val = _styled_str(str(value), v_color)
-    return f"{styled_key}{styled_val}"
+    return st_key if flag == 'query' else f"{st_key}: {st_val}"
 
 def _styled_str(str, color_flag):
     return style(str, fg=color_flag)

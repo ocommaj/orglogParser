@@ -49,11 +49,11 @@ def error_report():
         echo(f"\t{event}")
 
 def stats(label_str, numbers):
-    _nd = NormalDist.from_samples(numbers)
-    _nd_Ys = [_nd.pdf(x) for x in numbers]
-
     mn = round(mean(numbers), 4)
     sd = round(stdev(numbers))
+
+    _nd = NormalDist(mn, sd)
+    _nd_Ys = [_nd.pdf(x) for x in numbers]
 
     def plot():
         plt.plot(numbers, _nd_Ys, line_color = "indigo")
@@ -63,7 +63,6 @@ def stats(label_str, numbers):
         plt.axes_color('none') # <-bg outside plot
         plt.ticks_color('teal') # <- axes lines & labels
         plt.show()
-
 
     return {
         "mean": mn,
