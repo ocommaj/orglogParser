@@ -4,8 +4,9 @@ from click import echo
 import plotext as plt
 from .outputs import label, err_label
 
-ms_re = "\d*\.\d*ms"
-duration_re = "(duration=)(?={})".format(ms_re)
+#ms_re = "\d*\.\d*ms"
+milliSecond_re = "ms=\d*.\d*|\d*\.\d*ms"
+duration_re = "(duration=)(?={})".format(milliSecond_re)
 
 peculiars = []
 
@@ -30,7 +31,9 @@ def stats_output(search_results):
 def duration_events(log_events):
     def inspect_duration(log_event):
         def _duration_float(log):
-            return [ float(str[:-2]) for str in re.findall(ms_re, log) ][0]
+            return [
+                float(str[:-2]) for str in re.findall(milliSecond_re, log)
+            ][0]
 
         ev = log_event;
         if not re.search(duration_re, ev):
