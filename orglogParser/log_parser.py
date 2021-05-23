@@ -1,19 +1,84 @@
 import re
 
-milliSecond_re = "ms=\d*.\d*|\d*\.\d*ms"
+kiloPascal_re = "(?<=kPa=).\d*.\d*|\d*.\d*(?= kPa)"
+milliSecond_re = "(?<=ms=).\d*\.\d*|(?<=ms=)\d*|(?<=duration=)\d*\.\d*"
 duration_re = "(duration=)(?={})".format(milliSecond_re)
-
-kiloPascal_re = "kPa=\.*.\d*\.\d*"
 
 class LogParser:
     def __init__(self, raw_events):
         self.entries = [LogEntry(i, ev) for i,ev in enumerate(raw_events)]
         self.baseline_inflations = BaselineInflations(raw_events)
+        self.layer_inflations = LayerInflationEvents(raw_events)
 
         if len(self.baseline_inflations):
             #test_idx = 43
             #self.baseline_inflations.test_output(test_idx)
             pass
+
+        if len(self.layer_inflations):
+            test_idx = 37
+            self.layer_inflations[test_idx].test_output()
+
+        InstanceBlocks(raw_events)
+
+class InstanceBlocks:
+    def __init__(self, log_events):
+        prog_enter = re.compile('instance enter')
+        prog_ent_val = re.compile('(?<=instance enter).*')
+        prog_eval = re.compile('instance evaluate')
+        prog_eval_val = re.compile('(?<=instance evaluate).*')
+        prog_leave = re.compile('instance leave')
+        prog_leave_val = re.compile('(?<=instance leave).*')
+
+        ent_events = [
+            prog_ent_val.search(ev) for ev in log_events
+            if prog_enter.search(ev)
+        ]
+
+        eval_events = [
+            prog_eval_val.search(ev) for ev in log_events
+            if prog_eval.search(ev)
+        ]
+
+        exit_events = [
+            prog_leave_val.search(ev) for ev in log_events
+            if prog_leave.search(ev)
+        ]
+
+        #for ev in exit_events:
+         #  print(ev.group(0))
+        print(f"Instance Enter: {len(ent_events)}")
+        print(f"Instance Eval: {len(eval_events)}")
+        print(f"Instance Exit: {len(exit_events)}")
+
+class LayerInflationEvents(list):
+    def __init__(self, log_events):
+        super().__init__(self)
+        prog_pre = re.compile('Pre-inflation pressure:')
+        prog_post = re.compile('Post-inflation pressure:')
+        prog_set = re.compile('Inflating')
+        prog_end = re.compile('Actual inflation time')
+        for i,ev in enumerate(log_events):
+            if prog_pre.search(ev):
+                inflate_start = ev
+                inflate_end = next(ln for ln in log_events[i:] if prog_post.search(ln))
+                inflate_set = next(ln for ln in log_events[i:] if prog_set.search(ln))
+                inflate_time = next(ln for ln in log_events[i:] if prog_end.search(ln))
+                self.append( LayerInflation(inflate_start, inflate_end, inflate_set, inflate_time))
+        print(len(self))
+
+class LayerInflation:
+    def __init__(self, start_line, end_line, time_set, time_actual):
+        self.start_pressure = Pressure(start_line)
+        self.end_pressure = Pressure(end_line)
+        self.step = InflationStep([time_set, time_actual])
+
+    def test_output(self):
+        print(f"Start {self.start_pressure.test_str}")
+        print(f"End {self.end_pressure.test_str}")
+        print(self.step.inflating.test_str)
+        print(self.step.completed.test_str)
+        print("")
 
 class LogEntry:
     def __init__(self, idx, line_item):
@@ -36,13 +101,13 @@ class Duration:
             self.test_str = time.test_str
 
 class BaselineInflations(list):
-    def __init__(self, events):
+    def __init__(self, log_events):
         super().__init__(self)
         start_msg = "Inflating to baseline..."
         end_msg = "Inflated to baseline: "
 
-        starts = [i for i,ev in enumerate(events) if re.search(start_msg, ev)]
-        ends = [i for i,ev in enumerate(events) if re.search(end_msg, ev)]
+        starts = [i for i,ev in enumerate(log_events) if re.search(start_msg, ev)]
+        ends = [i for i,ev in enumerate(log_events) if re.search(end_msg, ev)]
 
         if len(starts) and len(ends):
             # hard code fix for log sample data starting mid-cycle
@@ -54,17 +119,17 @@ class BaselineInflations(list):
                 if not ev[0] < ev[1]:
                     print(f"ERROR: {ev}")
                 else:
-                    self.append( BaselineInflation(events[ev[0]:ev[1]+1]) )
+                    self.append( BaselineInflation(log_events[ev[0]:ev[1]+1]) )
 
     def test_output(self, test_idx):
         test_obj = self[test_idx]
         print(test_obj.test_str)
         print(test_obj.start)
         print(test_obj.end)
-        #for step in test_obj.steps:
-        #    print(step.completed.test_str)
-        #    print(step.delta.test_str_abs)
-        #    print(step.delta.test_str_pct)
+        for step in test_obj.steps:
+            print(step.completed.test_str)
+            print(step.delta.test_str_abs)
+            print(step.delta.test_str_pct)
         #for ev in test_obj.log_events:
         #    print(ev)
 
@@ -133,16 +198,17 @@ class PressureSensorData:
 
 class Pressure:
     def __init__(self, line_item):
-        prog=re.compile("[^=kPa]")
-        raw_data = re.findall(kiloPascal_re, line_item)[0]
-        self.float = float(''.join(prog.findall(raw_data) ))
+        prog=re.compile(kiloPascal_re)
+        raw_data = prog.search(line_item)[0]
+        self.float = float(raw_data)
         self.stringify = f"{self.float} kPa"
         self.test_str = f"Pressure: {self.stringify}"
 
 class Time:
     def __init__(self, line_item):
-        raw_data = re.findall(milliSecond_re, line_item)[0]
-        self.float = float(''.join(re.findall("[^ms={}]", raw_data)))
+        prog = re.compile(milliSecond_re)
+        raw_data = prog.search(line_item)[0]
+        self.float = float(raw_data)
         self.stringify = f"{self.float} ms"
         self.test_str = f"Duration: {self.stringify}"
 
