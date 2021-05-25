@@ -17,7 +17,7 @@ class LogParser:
 
         if len(self.layer_inflations):
             test_idx = 37
-            self.layer_inflations[test_idx].test_output()
+            self.layer_inflations[test_idx].test_output(test_idx)
 
         InstanceBlocks(raw_events)
 
@@ -65,17 +65,25 @@ class LayerInflationEvents(list):
                 inflate_set = next(ln for ln in log_events[i:] if prog_set.search(ln))
                 inflate_time = next(ln for ln in log_events[i:] if prog_end.search(ln))
                 self.append( LayerInflation(inflate_start, inflate_end, inflate_set, inflate_time))
-        print(len(self))
+        print(f"Pneumatic Separation Events: {len(self)}")
+
+        #def iterate_deltas(self): <-- tbd: write to iterate for rate of change
+        #    for i,liEvent in enumerate(self):
+        #        if i:
+        #            reading.set_delta(self[i-1].pressure)
 
 class LayerInflation:
     def __init__(self, start_line, end_line, time_set, time_actual):
         self.start_pressure = Pressure(start_line)
         self.end_pressure = Pressure(end_line)
         self.step = InflationStep([time_set, time_actual])
+        self.delta = Delta(self.start_pressure.float, self.end_pressure.float, 'kPa')
 
-    def test_output(self):
+    def test_output(self, idx):
+        print(f"Log Data for separation event {idx}")
         print(f"Start {self.start_pressure.test_str}")
         print(f"End {self.end_pressure.test_str}")
+        print(self.delta.test_str_abs)
         print(self.step.inflating.test_str)
         print(self.step.completed.test_str)
         print("")
